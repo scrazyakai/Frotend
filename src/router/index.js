@@ -1,25 +1,55 @@
-import { createRouter, createWebHashHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
+import { createRouter, createWebHistory } from 'vue-router'
+import LoginView from "@/views/LoginView.vue"
+import TestView from "@/views/TestView.vue"
+import HomeView from "@/views/HomeView.vue"
 
 const routes = [
   {
-    path: '/',
-    name: 'home',
-    component: HomeView
+    path: '/login',
+    name: 'login',
+    component: LoginView
   },
   {
-    path: '/about',
-    name: 'about',
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () => import(/* webpackChunkName: "about" */ '../views/AboutView.vue')
+    path: '/test',
+    name: 'test',
+    component: TestView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/',
+    name: 'home',
+    component: HomeView,
+    meta: { requiresAuth: true }
   }
 ]
 
 const router = createRouter({
-  history: createWebHashHistory(),
+  history: createWebHistory(),
   routes
 })
+
+// 全局路由守卫
+router.beforeEach((to, from, next) => {
+  const token = localStorage.getItem('token')
+
+  // 没有 token
+  if (!token) {
+    // 不是去 login，就强制跳 login
+    if (to.path !== '/login') {
+      next('/login')
+    } else {
+      next()
+    }
+  } else {
+    // 有 token
+    // 如果还想去 login，直接跳首页
+    if (to.path === '/login') {
+      next('/')
+    } else {
+      next()
+    }
+  }
+})
+
 
 export default router
