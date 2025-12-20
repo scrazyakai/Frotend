@@ -21,7 +21,7 @@
       <!-- 用户信息 -->
       <div class="user">
         <el-avatar
-            :size="32"
+            :size="48"
             :src="activity.userAvatarURL"
         />
         <span class="username">{{ activity.userName }}</span>
@@ -82,6 +82,9 @@ const handleClick = () => {
 <style scoped lang="less">
 .activity-card {
   width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-self: center;
   cursor: pointer;
   padding: 0;
 }
@@ -89,8 +92,9 @@ const handleClick = () => {
 .cover {
   position: relative;
   width: 100%;
-  height: 160px;
+  height: 320px;
   overflow: hidden;
+  border-radius: 2%;
 
   img {
     width: 100%;
@@ -106,12 +110,12 @@ const handleClick = () => {
 }
 
 .content {
-  padding: 12px;
+  padding: 20px;
 
   .desc {
-    font-size: 14px;
+    font-size: 16px;
     line-height: 1.5;
-    height: 42px;
+    height: 84px;
     overflow: hidden;
     color: #333;
   }
@@ -119,11 +123,11 @@ const handleClick = () => {
   .user {
     display: flex;
     align-items: center;
-    margin-top: 10px;
+    margin-top: 16px;
 
     .username {
       margin-left: 8px;
-      font-size: 13px;
+      font-size: 15px;
       color: #666;
     }
   }

@@ -1,5 +1,7 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { activity as fetchActivity } from '@/api/activity'
+import ActivityCard from '@/components/ActivityCard.vue'
 import {
   HomeFilled,
   Search,
@@ -42,6 +44,30 @@ const toggleCollapse = () => {
 const handleSelect = (index) => {
   activeKey.value = index
 }
+
+const activities = ref([])
+const isLoading = ref(false)
+const pageNo = ref(1)
+const total = ref(0)
+
+const fetchActivities = async () => {
+  isLoading.value = true
+  try {
+    const res = await fetchActivity(pageNo.value)
+    const payload = res?.data?.data
+    activities.value = Array.isArray(payload?.records) ? payload.records : []
+    total.value = payload?.total ?? 0
+  } catch (error) {
+    activities.value = []
+    total.value = 0
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const handleActivityClick = () => {}
+
+onMounted(fetchActivities)
 </script>
 
 <template>
@@ -121,9 +147,29 @@ const handleSelect = (index) => {
         </el-header>
 
         <el-main class="content-main">
-          <div class="page-card">
-            <h2>{{ currentPageTitle }} 内容区域</h2>
-            <p>当前激活标识: {{ activeKey }}</p>
+          <div v-if="activeKey === 'home'" class="activity-section">
+            <div class="activity-header">
+              <h2>Activities</h2>
+              <span class="activity-meta">Total {{ total }}</span>
+            </div>
+
+            <div v-if="!isLoading && activities.length === 0" class="empty-wrap">
+              <el-empty description="No activities" />
+            </div>
+
+            <div class="activity-grid" v-loading="isLoading">
+              <ActivityCard
+                v-for="(item, index) in activities"
+                :key="item.activityId ?? `${item.ownerId}-${index}`"
+                :activity="item"
+                @click="handleActivityClick"
+              />
+            </div>
+          </div>
+
+          <div v-else class="page-card">
+            <h2>{{ currentPageTitle }} Content</h2>
+            <p>Active key {{ activeKey }}</p>
           </div>
         </el-main>
       </el-container>
@@ -181,6 +227,7 @@ const handleSelect = (index) => {
       justify-content: center;
       color: white;
       font-weight: bold;
+  
       box-shadow: 0 2px 6px rgba(64, 158, 255, 0.3);
     }
 
@@ -296,6 +343,47 @@ const handleSelect = (index) => {
 
       h2 { color: #334155; margin-bottom: 10px; }
       p { color: #64748b; }
+    }
+
+    .activity-section {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      min-height: calc(100% - 40px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+      border: 1px solid #f0f3f7;
+      width: 60%;
+      max-width: 100%;
+    }
+
+    .activity-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+
+      h2 {
+        margin: 0;
+        font-size: 18px;
+        color: #334155;
+      }
+    }
+
+    .activity-meta {
+      color: #64748b;
+      font-size: 13px;
+    }
+
+    .activity-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+      gap: 16px;
+      justify-items: center;
+      justify-content: center;
+    }
+
+    .empty-wrap {
+      margin: 20px 0;
     }
   }
 }
