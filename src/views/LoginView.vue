@@ -70,7 +70,7 @@ const handleSubmit = () => {
           localStorage.setItem('token', token)
           ElMessage.success(`欢迎你，${username}`)
 
-          await router.push('/home')
+          await router.push('/')
         } else {
           ElMessage.error(description || message || '登录失败')
         }

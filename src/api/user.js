@@ -14,3 +14,9 @@ export function register(data){
         data
     })
 }
+export function current(){
+    return request({
+      url: '/api/user/current',
+      method: 'get'
+    })
+}

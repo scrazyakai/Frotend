@@ -1,7 +1,9 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { activity as fetchActivity } from '@/api/activity'
+import { current as fetchCurrent } from '@/api/user'
 import ActivityCard from '@/components/ActivityCard.vue'
+import UserCard from '@/components/UserCard.vue'
 import {
   HomeFilled,
   Search,
@@ -49,6 +51,7 @@ const activities = ref([])
 const isLoading = ref(false)
 const pageNo = ref(1)
 const total = ref(0)
+const currentUser = ref(null)
 
 const fetchActivities = async () => {
   isLoading.value = true
@@ -65,9 +68,21 @@ const fetchActivities = async () => {
   }
 }
 
+const fetchCurrentUser = async () => {
+  try {
+    const res = await fetchCurrent()
+    currentUser.value = res?.data?.data ?? null
+  } catch (error) {
+    currentUser.value = null
+  }
+}
+
 const handleActivityClick = () => {}
 
-onMounted(fetchActivities)
+onMounted(() => {
+  fetchActivities()
+  fetchCurrentUser()
+})
 </script>
 
 <template>
@@ -78,7 +93,7 @@ onMounted(fetchActivities)
         <!-- Logo 区域 -->
         <div class="logo-container">
           <div class="logo-icon">V</div>
-          <span v-show="!isCollapse" class="logo-text">Vue Admin</span>
+          <span v-show="!isCollapse" class="logo-text">Find Companions</span>
         </div>
 
         <!-- 菜单区域 -->
@@ -128,14 +143,6 @@ onMounted(fetchActivities)
             <el-menu-item index="theme">主题切换</el-menu-item>
           </el-sub-menu>
         </el-menu>
-
-        <!-- 折叠控制按钮 -->
-        <div class="collapse-footer" @click="toggleCollapse">
-          <el-icon>
-            <Expand v-if="isCollapse" />
-            <Fold v-else />
-          </el-icon>
-        </div>
       </el-aside>
 
       <!-- 主内容区 -->
@@ -147,24 +154,28 @@ onMounted(fetchActivities)
         </el-header>
 
         <el-main class="content-main">
-          <div v-if="activeKey === 'home'" class="activity-section">
-            <div class="activity-header">
-              <h2>Activities</h2>
-              <span class="activity-meta">Total {{ total }}</span>
+          <div v-if="activeKey === 'home'" class="home-panel">
+            <div class="activity-section">
+              <div v-if="!isLoading && activities.length === 0" class="empty-wrap">
+                <el-empty description="No activities" />
+              </div>
+
+              <div class="activity-grid" v-loading="isLoading">
+                <ActivityCard
+                  v-for="(item, index) in activities"
+                  :key="item.activityId ?? `${item.ownerId}-${index}`"
+                  :activity="item"
+                  @click="handleActivityClick"
+                />
+              </div>
             </div>
 
-            <div v-if="!isLoading && activities.length === 0" class="empty-wrap">
-              <el-empty description="No activities" />
-            </div>
-
-            <div class="activity-grid" v-loading="isLoading">
-              <ActivityCard
-                v-for="(item, index) in activities"
-                :key="item.activityId ?? `${item.ownerId}-${index}`"
-                :activity="item"
-                @click="handleActivityClick"
-              />
-            </div>
+            <aside class="right-sidebar">
+              <UserCard v-if="currentUser" :user="currentUser" />
+              <div v-else class="right-placeholder">
+                <el-empty description="No user info" />
+              </div>
+            </aside>
           </div>
 
           <div v-else class="page-card">
@@ -210,7 +221,7 @@ onMounted(fetchActivities)
   height: 100%;
 
   .logo-container {
-    height: 60px;
+    height: 80px;
     display: flex;
     align-items: center;
     padding: 0 16px;
@@ -259,6 +270,7 @@ onMounted(fetchActivities)
         background-color: @sidebar-active !important;
         color: @text-active !important;
         font-weight: bold;
+        border-radius: 10%;
 
         &::before {
           content: "";
@@ -352,23 +364,28 @@ onMounted(fetchActivities)
       min-height: calc(100% - 40px);
       box-shadow: 0 4px 20px rgba(0,0,0,0.03);
       border: 1px solid #f0f3f7;
-      width: 60%;
-      max-width: 100%;
     }
 
-    .activity-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 16px;
-
-      h2 {
-        margin: 0;
-        font-size: 18px;
-        color: #334155;
-      }
+    .home-panel {
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) 280px;
+      gap: 20px;
+      align-items: start;
     }
 
+    .right-sidebar {
+      position: sticky;
+      top: 20px;
+      align-self: start;
+    }
+
+    .right-placeholder {
+      background: white;
+      padding: 16px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+      border: 1px solid #f0f3f7;
+    }
     .activity-meta {
       color: #64748b;
       font-size: 13px;
@@ -376,7 +393,7 @@ onMounted(fetchActivities)
 
     .activity-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+      grid-template-columns: 1fr;
       gap: 16px;
       justify-items: center;
       justify-content: center;
