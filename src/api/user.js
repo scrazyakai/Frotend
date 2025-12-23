@@ -20,3 +20,15 @@ export function current(){
       method: 'get'
     })
 }
+export function recommend(){
+    return request({
+      url: '/api/user/recommend',
+      method: 'get'
+    })
+}
+export function logout(){
+    return request({
+      url: '/api/user/logout',
+      method: 'post'
+    })
+}

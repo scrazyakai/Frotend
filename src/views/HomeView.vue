@@ -1,7 +1,8 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onActivated } from 'vue'
+import { useRouter } from 'vue-router'
 import { activity as fetchActivity } from '@/api/activity'
-import { current as fetchCurrent } from '@/api/user'
+import { current as fetchCurrent, recommend as fetchRecommend, logout as fetchLogout } from '@/api/user'
 import ActivityCard from '@/components/ActivityCard.vue'
 import UserCard from '@/components/UserCard.vue'
 import {
@@ -52,6 +53,8 @@ const isLoading = ref(false)
 const pageNo = ref(1)
 const total = ref(0)
 const currentUser = ref(null)
+const recommendedUsers = ref([])
+const router = useRouter()
 
 const fetchActivities = async () => {
   isLoading.value = true
@@ -77,11 +80,36 @@ const fetchCurrentUser = async () => {
   }
 }
 
+const fetchRecommendedUsers = async () => {
+  try {
+    const res = await fetchRecommend()
+    const payload = res?.data?.data
+    recommendedUsers.value = Array.isArray(payload) ? payload : []
+  } catch (error) {
+    recommendedUsers.value = []
+  }
+}
+
+const handleUserSwitch = async () => {
+  try {
+    await fetchLogout()
+  } finally {
+    localStorage.removeItem('token')
+    router.replace('/login')
+  }
+}
+
 const handleActivityClick = () => {}
 
 onMounted(() => {
   fetchActivities()
   fetchCurrentUser()
+  fetchRecommendedUsers()
+})
+
+onActivated(() => {
+  fetchCurrentUser()
+  fetchRecommendedUsers()
 })
 </script>
 
@@ -171,9 +199,26 @@ onMounted(() => {
             </div>
 
             <aside class="right-sidebar">
-              <UserCard v-if="currentUser" :user="currentUser" />
+              <UserCard v-if="currentUser" :user="currentUser" @switch="handleUserSwitch" />
               <div v-else class="right-placeholder">
                 <el-empty description="No user info" />
+              </div>
+              <div class="recommend-panel">
+                <div class="recommend-title">推荐用户</div>
+                <div class="recommend-frame">
+                  <div v-if="recommendedUsers.length" class="recommend-list">
+                    <UserCard
+                      v-for="(item, index) in recommendedUsers"
+                      :key="item.userAccount ?? `${item.username}-${index}`"
+                      :user="item"
+                      :show-account="false"
+                      :show-switch="false"
+                    />
+                  </div>
+                  <div v-else class="recommend-empty">
+                    <el-empty description="No recommendations" />
+                  </div>
+                </div>
               </div>
             </aside>
           </div>
@@ -385,6 +430,38 @@ onMounted(() => {
       border-radius: 12px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.03);
       border: 1px solid #f0f3f7;
+    }
+
+    .recommend-panel {
+      margin-top: 16px;
+      padding: 8px 0 0;
+    }
+
+    .recommend-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 12px;
+    }
+
+    .recommend-frame {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.78) 0%, rgba(234, 244, 255, 0.7) 100%);
+      border: 1px solid rgba(148, 197, 255, 0.35);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(16px) saturate(140%);
+      -webkit-backdrop-filter: blur(16px) saturate(140%);
+    }
+
+    .recommend-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .recommend-empty {
+      padding: 12px 0 4px;
     }
     .activity-meta {
       color: #64748b;
