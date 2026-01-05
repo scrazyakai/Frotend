@@ -6,3 +6,27 @@ export function activity(pageNo = 1) {
         params: { pageNo }
     })
 }
+
+export function add(activity) {
+    return request({
+        url: '/api/activity/add',
+        method: 'post',
+        data: activity
+    })
+}
+
+export function update(activity) {
+    return request({
+        url: '/api/activity/update',
+        method: 'post',
+        data: activity
+    })
+}
+
+export function cancel(activityId) {
+    return request({
+        url: '/api/activity/cancel',
+        method: 'post',
+        params: { activityId }
+    })
+}

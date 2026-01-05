@@ -17,6 +17,18 @@
       <div class="desc">
         {{ activity.activityDesc }}
       </div>
+      <div v-if="isOwner" class="actions">
+        <el-button size="small" type="primary" @click.stop="handleUpdate">更改活动内容</el-button>
+        <el-button
+          v-if="activity.status !== 3"
+          size="small"
+          type="danger"
+          @click.stop="handleCancel"
+        >
+          取消活动
+        </el-button>
+      </div>
+
 
       <!-- 用户信息 -->
       <div class="user">
@@ -37,10 +49,14 @@ const props = defineProps({
   activity: {
     type: Object,
     required: true
+  },
+  currentUserId: {
+    type: [Number, String],
+    default: null
   }
 })
 
-const emit = defineEmits(['click'])
+const emit = defineEmits(['click', 'update', 'cancel'])
 
 /** 状态文案 */
 const statusText = computed(() => {
@@ -50,9 +66,9 @@ const statusText = computed(() => {
     case 2:
       return '进行中'
     case 3:
-      return '已结束'
-    case 4:
       return '已取消'
+    case 4:
+      return '已结束'
     default:
       return '未知'
   }
@@ -66,16 +82,33 @@ const statusType = computed(() => {
     case 2:
       return 'success'
     case 3:
-      return 'warning'
-    case 4:
       return 'danger'
+    case 4:
+      return 'warning'
     default:
       return ''
   }
 })
 
+const isOwner = computed(() => {
+  const ownerId = props.activity?.ownerId
+  const currentUserId = props.currentUserId
+  if (ownerId == null || currentUserId == null) {
+    return false
+  }
+  return String(ownerId) === String(currentUserId)
+})
+
 const handleClick = () => {
   emit('click', props.activity.activityId)
+}
+
+const handleUpdate = () => {
+  emit('update', props.activity)
+}
+
+const handleCancel = () => {
+  emit('cancel', props.activity.activityId)
 }
 </script>
 
@@ -130,6 +163,13 @@ const handleClick = () => {
       font-size: 15px;
       color: #666;
     }
+  }
+
+  .actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    justify-content: center;
   }
 }
 </style>

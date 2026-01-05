@@ -1,7 +1,7 @@
 <script setup>
-import { ref, computed, onMounted, onActivated } from 'vue'
+import { ref, computed, reactive, onMounted, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
-import { activity as fetchActivity } from '@/api/activity'
+import { activity as fetchActivity, cancel as cancelActivity, update as updateActivity } from '@/api/activity'
 import { current as fetchCurrent, recommend as fetchRecommend, logout as fetchLogout } from '@/api/user'
 import ActivityCard from '@/components/ActivityCard.vue'
 import UserCard from '@/components/UserCard.vue'
@@ -55,6 +55,33 @@ const total = ref(0)
 const currentUser = ref(null)
 const recommendedUsers = ref([])
 const router = useRouter()
+const currentUserId = computed(() => {
+  const user = currentUser.value
+  return user?.id ?? user?.userId ?? user?.userID ?? user?.user_id ?? null
+})
+
+const editDialogVisible = ref(false)
+const originalActivity = ref(null)
+const editForm = reactive({
+  activityId: null,
+  activityDesc: '',
+  startTime: '',
+  endTime: '',
+  coverURL: '',
+  maxMemberNumber: null
+})
+
+const openEditDialog = (activity) => {
+  originalActivity.value = { ...(activity ?? {}) }
+  editForm.activityId = activity?.activityId ?? null
+  editForm.activityDesc = activity?.activityDesc ?? ''
+  editForm.startTime = activity?.startTime ?? ''
+  editForm.endTime = activity?.endTime ?? ''
+  editForm.coverURL = activity?.coverURL ?? ''
+  editForm.maxMemberNumber = activity?.maxMemberNumber ?? null
+  editDialogVisible.value = true
+}
+
 
 const fetchActivities = async () => {
   isLoading.value = true
@@ -100,6 +127,29 @@ const handleUserSwitch = async () => {
 }
 
 const handleActivityClick = () => {}
+const handleActivityCancel = async (activityId) => {
+  try {
+    await cancelActivity(activityId)
+    fetchActivities()
+  } catch (error) {
+    // ignore for now
+  }
+}
+const handleActivityUpdate = (activity) => {
+  openEditDialog(activity)
+}
+
+const submitActivityUpdate = async () => {
+  try {
+    const payload = { ...(originalActivity.value ?? {}), ...editForm }
+    await updateActivity(payload)
+    editDialogVisible.value = false
+    fetchActivities()
+  } catch (error) {
+    // ignore for now
+  }
+}
+
 
 onMounted(() => {
   fetchActivities()
@@ -193,10 +243,50 @@ onActivated(() => {
                   v-for="(item, index) in activities"
                   :key="item.activityId ?? `${item.ownerId}-${index}`"
                   :activity="item"
+                  :current-user-id="currentUserId"
                   @click="handleActivityClick"
+                  @cancel="handleActivityCancel"
+                  @update="handleActivityUpdate"
                 />
               </div>
             </div>
+
+
+            <el-dialog v-model="editDialogVisible" title="更改活动内容" width="520px">
+              <el-form label-width="96px">
+                <el-form-item label="活动描述">
+                  <el-input v-model="editForm.activityDesc" type="textarea" :rows="3" />
+                </el-form-item>
+                <el-form-item label="开始时间">
+                  <el-date-picker
+                    v-model="editForm.startTime"
+                    type="datetime"
+                    value-format="YYYY-MM-DD HH:mm:ss"
+                    placeholder="选择开始时间"
+                    style="width: 100%"
+                  />
+                </el-form-item>
+                <el-form-item label="结束时间">
+                  <el-date-picker
+                    v-model="editForm.endTime"
+                    type="datetime"
+                    value-format="YYYY-MM-DD HH:mm:ss"
+                    placeholder="选择结束时间"
+                    style="width: 100%"
+                  />
+                </el-form-item>
+                <el-form-item label="封面">
+                  <el-input v-model="editForm.coverURL" placeholder="请输入封面URL" />
+                </el-form-item>
+                <el-form-item label="最大人数">
+                  <el-input-number v-model="editForm.maxMemberNumber" :min="1" style="width: 100%" />
+                </el-form-item>
+              </el-form>
+              <template #footer>
+                <el-button @click="editDialogVisible = false">取消</el-button>
+                <el-button type="primary" @click="submitActivityUpdate">保存</el-button>
+              </template>
+            </el-dialog>
 
             <aside class="right-sidebar">
               <UserCard v-if="currentUser" :user="currentUser" @switch="handleUserSwitch" />
