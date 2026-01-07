@@ -65,9 +65,17 @@ const handleSubmit = () => {
         const { code, data, description, message } = res.data
 
         if (code === 0) {
-          const { token, username } = data
+          const { token, username, userId } = data
 
+          // 存储token
           localStorage.setItem('token', token)
+          
+          // 存储用户信息（包括userId）
+          localStorage.setItem('userInfo', JSON.stringify({
+            userId: userId,
+            username: username
+          }))
+          
           ElMessage.success(`欢迎你，${username}`)
 
           await router.push('/')

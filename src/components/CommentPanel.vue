@@ -230,11 +230,13 @@ const emit = defineEmits(['comment-count-change'])
 // 获取当前登录用户ID
 const currentUserId = computed(() => {
   const userInfoStr = localStorage.getItem('userInfo')
+  
   if (userInfoStr) {
     try {
       const userInfo = JSON.parse(userInfoStr)
       return userInfo.id || userInfo.userId || userInfo.userID || userInfo.user_id || null
     } catch (e) {
+      console.error('解析userInfo失败:', e)
       return null
     }
   }
@@ -325,6 +327,8 @@ const fetchReplies = async (commentId, page = 1) => {
       } else {
         comment.replies = [...(comment.replies || []), ...responseData.records]
       }
+      // 更新回复总数（使用后端返回的总数）
+      comment.replyTotal = responseData.total || 0
       replyPageMap.value[commentId] = page
     }
   } catch (error) {
@@ -449,13 +453,17 @@ const handleLike = async (comment) => {
 // 判断是否可以编辑评论
 const canEditComment = (comment) => {
   if (!currentUserId.value) return false
-  return String(comment.userId) === String(currentUserId.value)
+  
+  const commentUserId = comment.userId || comment.user_id || comment.userID || comment.user_id
+  return String(commentUserId) === String(currentUserId.value)
 }
 
 // 判断是否可以删除评论
 const canDeleteComment = (comment) => {
   if (!currentUserId.value) return false
-  return String(comment.userId) === String(currentUserId.value)
+  
+  const commentUserId = comment.userId || comment.user_id || comment.userID || comment.user_id
+  return String(commentUserId) === String(currentUserId.value)
 }
 
 // 编辑评论
@@ -481,8 +489,15 @@ const handleUpdateComment = async () => {
       content: editContent.value
     })
     
-    // 检查响应是否成功
-    if (res && res.code === 0) {
+    console.log('更新评论响应:', res)
+    
+    // 检查响应是否成功 - 兼容多种响应结构
+    const isSuccess = 
+      (res && res.code === 0) || 
+      (res.data && res.data.code === 0) ||
+      (res.data === true)
+    
+    if (isSuccess) {
       ElMessage.success('更新成功')
       editDialogVisible.value = false
       
@@ -499,7 +514,8 @@ const handleUpdateComment = async () => {
       }
     } else {
       // 后端返回错误
-      ElMessage.error(res?.message || '更新失败，请检查权限')
+      const errorMsg = res?.data?.description || res?.data?.message || res?.message || '更新失败，请检查权限'
+      ElMessage.error(errorMsg)
     }
   } catch (error) {
     // 请求失败或被响应拦截器拦截
@@ -521,8 +537,15 @@ const handleDelete = async (comment) => {
 
     const res = await deleteComment(comment.id)
     
-    // 检查响应是否成功
-    if (res && res.code === 0) {
+    console.log('删除评论响应:', res)
+    
+    // 检查响应是否成功 - 兼容多种响应结构
+    const isSuccess = 
+      (res && res.code === 0) || 
+      (res.data && res.data.code === 0) ||
+      (res.data === true)
+    
+    if (isSuccess) {
       ElMessage.success('删除成功')
 
       if (comment.level === 1) {
@@ -542,7 +565,8 @@ const handleDelete = async (comment) => {
       emit('comment-count-change', total.value)
     } else {
       // 后端返回错误
-      ElMessage.error(res?.message || '删除失败，请检查权限')
+      const errorMsg = res?.data?.description || res?.data?.message || res?.message || '删除失败，请检查权限'
+      ElMessage.error(errorMsg)
     }
   } catch (error) {
     // 请求失败或被响应拦截器拦截，或者用户取消了操作
@@ -578,6 +602,7 @@ onMounted(() => {
 
   .comment-list {
     min-height: 200px;
+    padding: 0 10%;
   }
 
   .comment-item {
@@ -621,6 +646,8 @@ onMounted(() => {
 
   .comment-content {
     margin-left: 52px;
+    align-items: flex-start;
+    text-align: left;
   }
 
   .content-text {
@@ -632,6 +659,8 @@ onMounted(() => {
   }
 
   .comment-image {
+    margin-left: 52px;
+    align-self: flex-start;
     margin-top: 12px;
     max-width: 300px;
     max-height: 300px;
@@ -646,7 +675,9 @@ onMounted(() => {
   }
 
   .action-item {
-    display: flex;
+    height: 22px;
+    line-height: 22px;
+    display: inline-flex;
     align-items: center;
     gap: 4px;
     cursor: pointer;
@@ -659,25 +690,29 @@ onMounted(() => {
     }
 
     .el-icon {
-      font-size: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      font-size: 20px;
+      line-height: 20px;
     }
 
-  .action-icon {
-    font-size: 16px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .like-icon {
-    width: 20px;
-    height: 20px;
-    transition: transform 0.2s ease;
-    
-    .action-item:hover & {
-      transform: scale(1.2);
+    .action-icon {
+      width: 20px;
+      height: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
-  }
+
+    .like-icon {
+      width: 20px;
+      height: 20px;
+      display: block;
+      transition: transform 0.2s ease;
+    }
 
     &.danger:hover {
       color: #f56c6c;
@@ -726,7 +761,9 @@ onMounted(() => {
   }
 
   .reply-content {
-    margin-left: 42px;
+    margin-left: 52px;
+    align-items: flex-start;
+    text-align: left;
   }
 
   .reply-actions {
