@@ -17,18 +17,55 @@
       <div class="desc">
         {{ activity.activityDesc }}
       </div>
-      <div v-if="isOwner" class="actions">
-        <el-button size="small" type="primary" @click.stop="handleUpdate">更改活动内容</el-button>
-        <el-button
-          v-if="activity.status !== 3"
-          size="small"
-          type="danger"
-          @click.stop="handleCancel"
-        >
-          取消活动
-        </el-button>
+      <!-- 操作按钮 -->
+      <div class="actions">
+        <!-- 所有者按钮 -->
+        <template v-if="isOwner">
+          <el-button size="small" type="primary" @click.stop="handleUpdate">更改活动内容</el-button>
+          <el-button
+            v-if="activity.status !== 3"
+            size="small"
+            type="danger"
+            @click.stop="handleCancel"
+          >
+            取消活动
+          </el-button>
+        </template>
+        
+        <!-- 非所有者按钮 -->
+        <template v-else>
+          <el-button
+            v-if="activity.status === 1 && !isJoined"
+            size="small"
+            type="success"
+            @click.stop="handleJoin"
+          >
+            参与活动
+          </el-button>
+          <el-button
+            v-if="activity.status === 1 && isJoined"
+            size="small"
+            type="warning"
+            @click.stop="handleQuit"
+          >
+            退出活动
+          </el-button>
+        </template>
       </div>
 
+      <!-- 底部按钮 -->
+      <div class="bottom-actions">
+        <div class="comment-btn" @click.stop="handleComment">
+          <el-icon><ChatDotRound /></el-icon>
+          <span>评论</span>
+        </div>
+      </div>
+
+      <!-- 参与人数信息 -->
+      <div class="member-info">
+        <el-icon><User /></el-icon>
+        <span>{{ activity.currentMemberNumber }}/{{ activity.maxMemberNumber }} 人已参与</span>
+      </div>
 
       <!-- 用户信息 -->
       <div class="user">
@@ -44,6 +81,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { User, ChatDotRound } from '@element-plus/icons-vue'
 
 const props = defineProps({
   activity: {
@@ -53,10 +91,14 @@ const props = defineProps({
   currentUserId: {
     type: [Number, String],
     default: null
+  },
+  isJoined: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['click', 'update', 'cancel'])
+const emit = defineEmits(['click', 'update', 'cancel', 'join', 'quit', 'comment'])
 
 /** 状态文案 */
 const statusText = computed(() => {
@@ -109,6 +151,18 @@ const handleUpdate = () => {
 
 const handleCancel = () => {
   emit('cancel', props.activity.activityId)
+}
+
+const handleJoin = () => {
+  emit('join', props.activity.activityId)
+}
+
+const handleQuit = () => {
+  emit('quit', props.activity.activityId)
+}
+
+const handleComment = () => {
+  emit('comment', props.activity)
 }
 </script>
 
@@ -170,6 +224,52 @@ const handleCancel = () => {
     gap: 8px;
     margin-top: 12px;
     justify-content: center;
+  }
+
+  .member-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    padding: 8px 12px;
+    background: #f5f7fa;
+    border-radius: 6px;
+    color: #606266;
+    font-size: 14px;
+
+    .el-icon {
+      color: #909399;
+    }
+  }
+
+  .bottom-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #ebeef5;
+  }
+
+  .comment-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: #f0f9ff;
+    color: #409eff;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 14px;
+
+    &:hover {
+      background: #e1f5fe;
+      transform: translateY(-1px);
+    }
+
+    .el-icon {
+      font-size: 16px;
+    }
   }
 }
 </style>

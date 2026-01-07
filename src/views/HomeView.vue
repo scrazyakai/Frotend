@@ -1,10 +1,11 @@
 <script setup>
 import { ref, computed, reactive, onMounted, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
-import { activity as fetchActivity, cancel as cancelActivity, update as updateActivity } from '@/api/activity'
+import { activity as fetchActivity, cancel as cancelActivity, update as updateActivity, join as joinActivity, quit as quitActivity } from '@/api/activity'
 import { current as fetchCurrent, recommend as fetchRecommend, logout as fetchLogout } from '@/api/user'
 import ActivityCard from '@/components/ActivityCard.vue'
 import UserCard from '@/components/UserCard.vue'
+import CommentPanel from '@/components/CommentPanel.vue'
 import {
   HomeFilled,
   Search,
@@ -71,6 +72,10 @@ const editForm = reactive({
   maxMemberNumber: null
 })
 
+// 评论弹窗
+const commentDialogVisible = ref(false)
+const selectedActivity = ref(null)
+
 const openEditDialog = (activity) => {
   originalActivity.value = { ...(activity ?? {}) }
   editForm.activityId = activity?.activityId ?? null
@@ -135,6 +140,43 @@ const handleActivityCancel = async (activityId) => {
     // ignore for now
   }
 }
+
+const handleActivityJoin = async (activityId) => {
+  try {
+    await joinActivity(activityId)
+    fetchActivities()
+  } catch (error) {
+    // ignore for now
+  }
+}
+
+const handleActivityQuit = async (activityId) => {
+  try {
+    await quitActivity(activityId)
+    fetchActivities()
+  } catch (error) {
+    // ignore for now
+  }
+}
+
+const handleActivityComment = (activity) => {
+  selectedActivity.value = activity
+  commentDialogVisible.value = true
+}
+
+const handleCommentDialogClose = () => {
+  commentDialogVisible.value = false
+  selectedActivity.value = null
+  // 刷新活动列表以更新评论数
+  fetchActivities()
+}
+
+// 处理评论数量变化，不关闭对话框
+const handleCommentCountChange = () => {
+  // 只刷新活动列表以更新评论数
+  fetchActivities()
+}
+
 const handleActivityUpdate = (activity) => {
   openEditDialog(activity)
 }
@@ -244,8 +286,12 @@ onActivated(() => {
                   :key="item.activityId ?? `${item.ownerId}-${index}`"
                   :activity="item"
                   :current-user-id="currentUserId"
+                  :is-joined="item.isJoined || false"
                   @click="handleActivityClick"
                   @cancel="handleActivityCancel"
+                  @join="handleActivityJoin"
+                  @quit="handleActivityQuit"
+                  @comment="handleActivityComment"
                   @update="handleActivityUpdate"
                 />
               </div>
@@ -286,6 +332,20 @@ onActivated(() => {
                 <el-button @click="editDialogVisible = false">取消</el-button>
                 <el-button type="primary" @click="submitActivityUpdate">保存</el-button>
               </template>
+            </el-dialog>
+
+            <!-- 评论弹窗 -->
+            <el-dialog
+              v-model="commentDialogVisible"
+              :title="selectedActivity ? `${selectedActivity.activityDesc} - 评论` : '评论'"
+              width="800px"
+              @close="handleCommentDialogClose"
+            >
+              <CommentPanel
+                v-if="selectedActivity"
+                :activity-id="selectedActivity.activityId"
+                @comment-count-change="handleCommentCountChange"
+              />
             </el-dialog>
 
             <aside class="right-sidebar">
