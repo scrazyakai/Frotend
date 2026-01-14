@@ -138,3 +138,15 @@ export async function getActivityDetail(activityId: number): Promise<ApiResponse
     description: ''
   }
 }
+
+/**
+ * 检查当前用户是否参与过该活动
+ * @param activityId 活动ID
+ * @returns 是否参与该活动
+ */
+export function checkParticipant(activityId: number): Promise<ApiResponse<boolean>> {
+  return request({
+    url: `/api/activity/${activityId}/participant`,
+    method: 'get'
+  })
+}

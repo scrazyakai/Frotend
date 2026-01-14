@@ -200,7 +200,12 @@ const getStatusText = (status) => {
 const handleJoin = async () => {
   try {
     joinLoading.value = true
-    await join(activityId.value)
+    const res = await join(activityId.value)
+    const payload = res?.data
+    if (payload?.code !== 0) {
+      ElMessage.error(payload?.description || payload?.message || '加入活动失败')
+      return
+    }
     ElMessage.success('加入活动成功')
     fetchActivityDetail()
   } catch (error) {
@@ -220,7 +225,12 @@ const handleQuit = async () => {
     })
 
     quitLoading.value = true
-    await quit(activityId.value)
+    const res = await quit(activityId.value)
+    const payload = res?.data
+    if (payload?.code !== 0) {
+      ElMessage.error(payload?.description || payload?.message || '退出活动失败')
+      return
+    }
     ElMessage.success('退出活动成功')
     fetchActivityDetail()
   } catch (error) {

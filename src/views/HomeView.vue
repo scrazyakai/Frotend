@@ -6,6 +6,7 @@ import { current as fetchCurrent, recommend as fetchRecommend, logout as fetchLo
 import ActivityCard from '@/components/ActivityCard.vue'
 import UserCard from '@/components/UserCard.vue'
 import CommentPanel from '@/components/CommentPanel.vue'
+import { ElMessage } from 'element-plus'
 import {
   HomeFilled,
   Search,
@@ -143,7 +144,12 @@ const handleActivityCancel = async (activityId) => {
 
 const handleActivityJoin = async (activityId) => {
   try {
-    await joinActivity(activityId)
+    const res = await joinActivity(activityId)
+    const payload = res?.data
+    if (payload?.code !== 0) {
+      ElMessage.error(payload?.description || payload?.message || '加入活动失败')
+      return
+    }
     fetchActivities()
   } catch (error) {
     // ignore for now
@@ -152,7 +158,12 @@ const handleActivityJoin = async (activityId) => {
 
 const handleActivityQuit = async (activityId) => {
   try {
-    await quitActivity(activityId)
+    const res = await quitActivity(activityId)
+    const payload = res?.data
+    if (payload?.code !== 0) {
+      ElMessage.error(payload?.description || payload?.message || '退出活动失败')
+      return
+    }
     fetchActivities()
   } catch (error) {
     // ignore for now
@@ -286,7 +297,6 @@ onActivated(() => {
                   :key="item.activityId ?? `${item.ownerId}-${index}`"
                   :activity="item"
                   :current-user-id="currentUserId"
-                  :is-joined="item.isJoined || false"
                   @click="handleActivityClick"
                   @cancel="handleActivityCancel"
                   @join="handleActivityJoin"

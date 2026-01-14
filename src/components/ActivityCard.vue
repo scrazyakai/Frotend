@@ -31,40 +31,32 @@
             取消活动
           </el-button>
         </template>
-        
-        <!-- 非所有者按钮 -->
-        <template v-else>
-          <el-button
-            v-if="activity.status === 1 && !isJoined"
-            size="small"
-            type="success"
-            @click.stop="handleJoin"
-          >
-            参与活动
-          </el-button>
-          <el-button
-            v-if="activity.status === 1 && isJoined"
-            size="small"
-            type="warning"
-            @click.stop="handleQuit"
-          >
-            退出活动
-          </el-button>
-        </template>
       </div>
 
       <!-- 底部按钮 -->
       <div class="bottom-actions">
+        <div class="left-actions">
+          <!-- 参与人数信息 -->
+          <div class="member-info">
+            <el-icon><User /></el-icon>
+            <span>{{ activity.currentMemberNumber }}/{{ activity.maxMemberNumber }}</span>
+          </div>
+          
+          <!-- 参与/退出按钮 -->
+          <el-button
+            v-if="activity.status === 1"
+            size="small"
+            :type="isParticipating ? 'warning' : 'success'"
+            @click.stop="isParticipating ? handleQuit() : handleJoin()"
+          >
+            {{ isParticipating ? '退出活动' : '参与活动' }}
+          </el-button>
+        </div>
+        
         <div class="comment-btn" @click.stop="handleComment">
           <el-icon><ChatDotRound /></el-icon>
           <span>评论</span>
         </div>
-      </div>
-
-      <!-- 参与人数信息 -->
-      <div class="member-info">
-        <el-icon><User /></el-icon>
-        <span>{{ activity.currentMemberNumber }}/{{ activity.maxMemberNumber }} 人已参与</span>
       </div>
 
       <!-- 用户信息 -->
@@ -80,8 +72,9 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { User, ChatDotRound } from '@element-plus/icons-vue'
+import { checkParticipant } from '@/api/activity'
 
 const props = defineProps({
   activity: {
@@ -92,13 +85,24 @@ const props = defineProps({
     type: [Number, String],
     default: null
   },
-  isJoined: {
+  isParticipating: {
     type: Boolean,
-    default: false
+    default: undefined
   }
 })
 
 const emit = defineEmits(['click', 'update', 'cancel', 'join', 'quit', 'comment'])
+
+// 是否参与该活动（本地状态）
+const localIsParticipating = ref(false)
+
+// 使用 props 或本地状态
+const isParticipating = computed(() => {
+  if (props.isParticipating !== undefined) {
+    return props.isParticipating
+  }
+  return localIsParticipating.value
+})
 
 /** 状态文案 */
 const statusText = computed(() => {
@@ -141,6 +145,42 @@ const isOwner = computed(() => {
   return String(ownerId) === String(currentUserId)
 })
 
+// 检查当前用户是否参与了活动
+const checkIfParticipated = async () => {
+  // 如果 props 已经提供了 isParticipating，则不需要检查
+  if (props.isParticipating !== undefined) {
+    return
+  }
+  
+  if (!props.currentUserId) {
+    localIsParticipating.value = false
+    return
+  }
+  
+  try {
+    const res = await checkParticipant(props.activity.activityId)
+    // 后端返回 {code: 0, data: boolean, ...}
+    // res.data.data 才是实际的参与状态
+    localIsParticipating.value = res.data.data === true
+  } catch (error) {
+    localIsParticipating.value = false
+  }
+}
+
+// 监听 activityId 变化，重新检查参与状态
+watch(() => props.activity?.activityId, (newId) => {
+  if (newId && props.isParticipating === undefined) {
+    checkIfParticipated()
+  }
+}, { immediate: true })
+
+// 监听 activity 对象变化，重新检查参与状态
+watch(() => props.activity, (newActivity) => {
+  if (newActivity && props.isParticipating === undefined) {
+    checkIfParticipated()
+  }
+}, { deep: true })
+
 const handleClick = () => {
   emit('click', props.activity.activityId)
 }
@@ -179,7 +219,7 @@ const handleComment = () => {
 .cover {
   position: relative;
   width: 100%;
-  height: 320px;
+  height: 200px;
   overflow: hidden;
   border-radius: 2%;
 
@@ -236,6 +276,8 @@ const handleComment = () => {
     border-radius: 6px;
     color: #606266;
     font-size: 14px;
+    min-width: 120px;
+    max-width: 140px;
 
     .el-icon {
       color: #909399;
@@ -244,10 +286,21 @@ const handleComment = () => {
 
   .bottom-actions {
     display: flex;
+    justify-content: space-between;
+    align-items: center;
     gap: 12px;
     margin-top: 12px;
     padding-top: 12px;
     border-top: 1px solid #ebeef5;
+    flex-wrap: wrap;
+
+    .left-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+      min-width: 0;
+    }
   }
 
   .comment-btn {

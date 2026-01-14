@@ -32,7 +32,7 @@ request.interceptors.request.use(
 // 响应拦截器：统一处理响应
 request.interceptors.response.use(
   (response: any) => {
-    const { code, message } = response.data
+    const { code, message, description } = response.data
     
     // 成功响应
     if (code === 0) {
@@ -40,7 +40,7 @@ request.interceptors.response.use(
     }
     
     // 业务错误
-    ElMessage.error(message || '请求失败')
+    ElMessage.error(description || message || '请求失败')
     return Promise.reject(response.data)
   },
   (error: any) => {

@@ -90,3 +90,15 @@ export function detail(activityId) {
         data: { activityId }
     })
 }
+
+/**
+ * 检查当前用户是否参与过该活动
+ * @param {number} activityId 活动ID
+ * @returns {Promise} Promise对象
+ */
+export function checkParticipant(activityId) {
+    return request({
+        url: `/api/activity/${activityId}/participant`,
+        method: 'get'
+    })
+}

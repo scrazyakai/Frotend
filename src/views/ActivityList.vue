@@ -8,48 +8,18 @@
     <div v-loading="loading" class="activity-list">
       <el-empty v-if="!loading && activities.length === 0" description="暂无活动" />
 
-      <el-card v-for="activity in activities" :key="activity.activityId" class="activity-card" shadow="hover">
-        <div class="activity-content">
-          <!-- 封面图 -->
-          <div class="activity-cover" v-if="activity.coverURL">
-            <img :src="activity.coverURL" :alt="activity.activityDesc" />
-          </div>
-
-          <!-- 活动信息 -->
-          <div class="activity-info">
-            <div class="activity-title">{{ activity.activityDesc }}</div>
-            
-            <div class="activity-meta">
-              <div class="meta-item">
-                <el-icon><Calendar /></el-icon>
-                <span>{{ formatDate(activity.startTime) }} - {{ formatDate(activity.endTime) }}</span>
-              </div>
-              
-              <div class="meta-item">
-                <el-icon><User /></el-icon>
-                <span>创建人：{{ activity.userName }}</span>
-              </div>
-              
-              <div class="meta-item">
-                <el-icon><UserFilled /></el-icon>
-                <span>已报名：{{ activity.currentMemberNumber }}/{{ activity.maxMemberNumber }}</span>
-              </div>
-            </div>
-
-            <div class="activity-status">
-              <el-tag :type="getStatusType(activity.status)">
-                {{ getStatusText(activity.status) }}
-              </el-tag>
-            </div>
-
-            <div class="activity-actions">
-              <el-button type="primary" @click="goToDetail(activity.activityId)">
-                查看详情
-              </el-button>
-            </div>
-          </div>
-        </div>
-      </el-card>
+      <ActivityCard
+        v-for="activity in activities"
+        :key="activity.activityId"
+        :activity="activity"
+        :current-user-id="currentUserId"
+        @click="goToDetail"
+        @update="handleUpdate"
+        @cancel="handleCancel"
+        @join="handleJoin"
+        @quit="handleQuit"
+        @comment="handleComment"
+      />
     </div>
 
     <!-- 分页 -->
@@ -68,12 +38,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getActivityList } from '@/api/activity'
+import { getActivityList, joinActivity, quitActivity, cancelActivity } from '@/api/activity'
 import { Activity, ActivityStatus } from '@/api/activity'
-import { Calendar, User, UserFilled } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import ActivityCard from '@/components/ActivityCard.vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const router = useRouter()
 
@@ -83,6 +53,19 @@ const activities = ref<Activity[]>([])
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const currentUserId = computed(() => {
+  const userInfo = localStorage.getItem('userInfo')
+  if (userInfo) {
+    try {
+      const parsed = JSON.parse(userInfo)
+      return parsed.userId
+    } catch (e) {
+      console.error('解析用户信息失败:', e)
+      return null
+    }
+  }
+  return null
+})
 
 // 获取活动列表
 const fetchActivities = async () => {
@@ -138,6 +121,100 @@ const goToDetail = (activityId: number) => {
   router.push(`/activity/${activityId}`)
 }
 
+// 处理更新活动
+const handleUpdate = (activity: Activity) => {
+  ElMessage.info('更新功能待实现')
+  // TODO: 跳转到编辑页面或打开编辑对话框
+}
+
+// 处理取消活动
+const handleCancel = async (activityId: number) => {
+  try {
+    await ElMessageBox.confirm('确定要取消这个活动吗？', '提示', {
+      type: 'warning'
+    })
+    
+    await cancelActivity(activityId)
+    ElMessage.success('活动已取消')
+    fetchActivities()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('取消活动失败:', error)
+      ElMessage.error('取消活动失败')
+    }
+  }
+}
+
+// 处理加入活动
+const handleJoin = async (activityId: number) => {
+  try {
+    const res = await joinActivity(activityId)
+    if (res.code === 0 && res.data === true) {
+      ElMessage({
+        message: '成功参与',
+        type: 'success',
+        duration: 3000,
+        offset: 100
+      })
+      fetchActivities()
+    } else {
+      const errorMsg = res.description || res.message || '加入活动失败'
+      console.log('显示错误:', errorMsg)
+      ElMessage({
+        message: errorMsg,
+        type: 'error',
+        duration: 3000,
+        offset: 100
+      })
+    }
+  } catch (error: any) {
+    const description = error.response?.data?.description || error.message || '加入活动失败'
+    console.log('catch错误:', description)
+    ElMessage({
+      message: description,
+      type: 'error',
+      duration: 3000,
+      offset: 100
+    })
+  }
+}
+
+// 处理退出活动
+const handleQuit = async (activityId: number) => {
+  try {
+    const res = await quitActivity(activityId)
+    if (res.code === 0 && res.data === true) {
+      ElMessage({
+        message: '成功退出',
+        type: 'success',
+        duration: 3000
+      })
+      fetchActivities()
+    } else {
+      const errorMsg = res.description || res.message || '退出活动失败'
+      console.log('显示错误:', errorMsg)
+      ElMessage({
+        message: errorMsg,
+        type: 'error',
+        duration: 3000
+      })
+    }
+  } catch (error: any) {
+    const description = error.response?.data?.description || error.message || '退出活动失败'
+    console.log('catch错误:', description)
+    ElMessage({
+      message: description,
+      type: 'error',
+      duration: 3000
+    })
+  }
+}
+
+// 处理评论
+const handleComment = (activity: Activity) => {
+  router.push(`/activity/${activity.activityId}`)
+}
+
 // 分页大小改变
 const handleSizeChange = (size: number) => {
   pageSize.value = size
@@ -160,7 +237,7 @@ onMounted(() => {
 <style scoped lang="less">
 .activity-list-container {
   padding: 20px;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 
@@ -174,95 +251,15 @@ onMounted(() => {
 }
 
 .activity-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   gap: 20px;
   min-height: 400px;
-}
-
-.activity-card {
-  cursor: pointer;
-  transition: all 0.3s;
-  
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  }
-}
-
-.activity-content {
-  display: flex;
-  gap: 20px;
-}
-
-.activity-cover {
-  width: 200px;
-  height: 150px;
-  flex-shrink: 0;
-  border-radius: 8px;
-  overflow: hidden;
-  
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-}
-
-.activity-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.activity-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #333;
-  line-height: 1.4;
-}
-
-.activity-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  
-  .meta-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: #666;
-    font-size: 14px;
-    
-    .el-icon {
-      color: #909399;
-    }
-  }
-}
-
-.activity-status {
-  margin-top: auto;
-}
-
-.activity-actions {
-  margin-top: 12px;
 }
 
 .pagination-container {
   margin-top: 30px;
   display: flex;
   justify-content: center;
-}
-
-@media (max-width: 768px) {
-  .activity-content {
-    flex-direction: column;
-  }
-  
-  .activity-cover {
-    width: 100%;
-    height: 200px;
-  }
 }
 </style>
